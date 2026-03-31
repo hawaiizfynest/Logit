@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Database & data
+data/
+*.db
+*.sqlite
+
+# Environment & secrets
+.env
+.env.local
+.env.production
+docker-compose.override.yml
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

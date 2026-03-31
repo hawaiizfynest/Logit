@@ -1,0 +1,21 @@
+services:
+  fieldtrack:
+    image: node:20-alpine
+    container_name: fieldtrack
+    restart: unless-stopped
+    working_dir: /app
+    entrypoint: ["sh", "/app/entrypoint.sh"]
+    ports:
+      - "3001:3000"
+    volumes:
+      - /share/Container/fieldtrack:/app
+      - fieldtrack-data:/app/data
+      - fieldtrack-modules:/app/node_modules
+    environment:
+      - SESSION_SECRET=change-this-to-a-long-random-string
+      - DB_PATH=/app/data/fieldtrack.db
+      - PORT=3000
+
+volumes:
+  fieldtrack-data:
+  fieldtrack-modules:

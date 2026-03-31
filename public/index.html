@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logit — Technician Time Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-bg-grid"></div>
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo">LOG<span>IT</span></div>
+      <div class="login-tagline">Technician Time Management</div>
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="Enter your username" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="Enter your password" autocomplete="current-password">
+    </div>
+    <div class="login-error hidden" id="login-error"><span>⚠</span> Invalid username or password</div>
+    <button class="btn btn-primary btn-full btn-lg" id="login-btn" onclick="doLogin()">
+      Sign In <span class="btn-arrow">→</span>
+    </button>
+    <div style="text-align:center;margin-top:16px">
+      <a href="/register.html" style="color:var(--text-muted);font-size:0.85rem;text-decoration:none">Don't have an account? Request access</a>
+    </div>
+  </div>
+</div>
+
+<!-- MFA SCREEN -->
+<div id="mfa-screen" class="hidden">
+  <div class="login-bg-grid"></div>
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo">LOG<span>IT</span></div>
+      <div class="login-tagline">Two-Factor Verification</div>
+    </div>
+    <div style="color:var(--text-dim);font-size:0.9rem;margin-bottom:20px;line-height:1.6" id="mfa-method-label"></div>
+    <div class="form-group">
+      <label>Verification Code</label>
+      <input type="text" id="mfa-code" maxlength="6" placeholder="000000"
+        style="letter-spacing:6px;font-size:1.4rem;text-align:center;font-weight:700">
+    </div>
+    <div class="login-error hidden" id="mfa-error"></div>
+    <button class="btn btn-primary btn-full btn-lg" id="mfa-btn" onclick="doMFAVerify()">Verify</button>
+    <div style="display:flex;justify-content:space-between;margin-top:14px">
+      <button class="btn btn-ghost btn-sm" onclick="cancelMFA()">← Back to login</button>
+      <button class="btn btn-ghost btn-sm" id="mfa-resend-btn" onclick="doMFAResend()" style="display:none">Resend code</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header id="app-header">
+    <div class="header-left"><div class="header-logo">LOG<span>IT</span></div></div>
+    <div class="header-right">
+      <div class="user-chip">
+        <span id="user-chip-name">—</span>
+        <span class="user-chip-role" id="user-chip-role">—</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+  </header>
+  <nav id="tab-bar"></nav>
+  <main id="main-content"></main>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" class="hidden" onclick="closeModal()">
+  <div id="modal-box" onclick="event.stopPropagation()">
+    <div id="modal-inner"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="hidden"></div>
+
+<script src="/js/api.js?v=10"></script>
+<script src="/js/utils.js?v=10"></script>
+<script src="/js/admin.js?v=10"></script>
+<script src="/js/tech.js?v=10"></script>
+<script src="/js/app.js?v=10"></script>
+</body>
+</html>
