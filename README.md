@@ -135,7 +135,7 @@ logit-server/
 
 ## Companion App
 
-A React Native / Expo mobile app is available in the [logit-app](https://github.com/hawaiizfynest/logit-app) repository.
+A React Native / Expo mobile app is available in the [logit-app](https://github.com/hawaiizfynest/logit-ios-app) repository.
 
 ---
 
