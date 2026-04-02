@@ -4,7 +4,42 @@ const nodemailer = require('nodemailer');
 const db         = require('../db/database');
 const router     = express.Router();
 
-function sendAdminNotification(request) {
+// ── Discord webhook notification ──
+async function sendDiscordNotification(registration) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) return; // silently skip if not configured
+
+  const payload = {
+    username: 'Logit',
+    embeds: [{
+      title: '🔔 New Registration Request',
+      color: 0xf97316,
+      fields: [
+        { name: 'Name',     value: registration.name,           inline: true },
+        { name: 'Username', value: `@${registration.username}`, inline: true },
+        { name: 'Email',    value: registration.email || '—',   inline: true },
+        { name: 'Time',     value: new Date().toLocaleString(), inline: false },
+      ],
+      footer: { text: 'Log in to Logit to approve or deny this request.' },
+    }],
+  };
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      console.error(`Discord webhook failed: ${res.status} ${res.statusText}`);
+    }
+  } catch(e) {
+    console.error('Discord webhook error:', e.message);
+  }
+}
+
+// ── Email notification ──
+function sendAdminEmailNotification(registration) {
   if (!process.env.SMTP_HOST) return Promise.resolve();
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -15,12 +50,12 @@ function sendAdminNotification(request) {
   return transporter.sendMail({
     from: process.env.SMTP_FROM || 'noreply@logged.digital',
     to: process.env.SMTP_USER,
-    subject: `Logit — New Registration Request from ${request.name}`,
-    text: `A new technician registration request has been submitted.\n\nName: ${request.name}\nUsername: ${request.username}\nEmail: ${request.email || 'Not provided'}\n\nLog in to Logit to approve or deny this request.`,
+    subject: `Logit — New Registration Request from ${registration.name}`,
+    text: `A new technician registration request has been submitted.\n\nName: ${registration.name}\nUsername: ${registration.username}\nEmail: ${registration.email || 'Not provided'}\n\nLog in to Logit to approve or deny this request.`,
   });
 }
 
-// POST — submit registration request (public, no auth needed)
+// ── POST — submit registration (public) ──
 router.post('/', (req, res) => {
   const { name, username, email, password, confirmPassword } = req.body;
 
@@ -30,11 +65,9 @@ router.post('/', (req, res) => {
 
   const uname = username.toLowerCase().trim();
 
-  // Check username not already taken by active user
   const exists = db.prepare("SELECT id FROM users WHERE username=? AND active=1").get(uname);
   if (exists) return res.status(409).json({ error: 'That username is already taken' });
 
-  // Check no pending request with same username
   const pending = db.prepare("SELECT id FROM registration_requests WHERE username=? AND status='pending'").get(uname);
   if (pending) return res.status(409).json({ error: 'A request with that username is already pending' });
 
@@ -42,27 +75,29 @@ router.post('/', (req, res) => {
   const result = db.prepare("INSERT INTO registration_requests (name, username, password, email) VALUES (?,?,?,?)")
     .run(name.trim(), uname, hash, email?.trim() || null);
 
-  const request = db.prepare("SELECT * FROM registration_requests WHERE id=?").get(result.lastInsertRowid);
-  sendAdminNotification(request).catch(e => console.error('Notification email error:', e));
+  const registration = db.prepare("SELECT * FROM registration_requests WHERE id=?").get(result.lastInsertRowid);
+
+  // Fire notifications (don't await — don't block the response)
+  sendDiscordNotification(registration).catch(e => console.error('Discord error:', e.message));
+  sendAdminEmailNotification(registration).catch(e => console.error('Email error:', e.message));
 
   res.json({ ok: true });
 });
 
-// GET — list all pending requests (admin only)
+// ── GET — list pending (admin only) ──
 router.get('/', (req, res) => {
   if (!req.session.userId || req.session.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const requests = db.prepare("SELECT * FROM registration_requests WHERE status='pending' ORDER BY created_at DESC").all();
   res.json(requests);
 });
 
-// POST approve
+// ── POST approve ──
 router.post('/:id/approve', (req, res) => {
   if (!req.session.userId || req.session.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const id  = parseInt(req.params.id);
   const reg = db.prepare("SELECT * FROM registration_requests WHERE id=? AND status='pending'").get(id);
   if (!reg) return res.status(404).json({ error: 'Request not found or already reviewed' });
 
-  // Check username still available
   const exists = db.prepare("SELECT id FROM users WHERE username=? AND active=1").get(reg.username);
   if (exists) {
     db.prepare("UPDATE registration_requests SET status='denied', reviewed_at=?, reviewed_by=? WHERE id=?")
@@ -70,7 +105,6 @@ router.post('/:id/approve', (req, res) => {
     return res.status(409).json({ error: 'Username was taken by someone else. Request denied.' });
   }
 
-  // Create technician account
   db.prepare("INSERT INTO users (name, username, password, role, pay_rate, email) VALUES (?,?,?,'tech',0,?)")
     .run(reg.name, reg.username, reg.password, reg.email || null);
   db.prepare("UPDATE registration_requests SET status='approved', reviewed_at=?, reviewed_by=? WHERE id=?")
@@ -79,7 +113,7 @@ router.post('/:id/approve', (req, res) => {
   res.json({ ok: true });
 });
 
-// POST deny
+// ── POST deny ──
 router.post('/:id/deny', (req, res) => {
   if (!req.session.userId || req.session.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const id = parseInt(req.params.id);
